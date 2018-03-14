@@ -1,0 +1,20 @@
+Running the interpretor is simple. Do python Interpretor_1.py and then input will continue till $$.
+
+Python 2.7 required
+
+---RUN---
+python Interpretor_1.py 
+(a.b)$$
+or 
+python Interpretor_1.py < Input1.txt
+
+output is on standard output
+
+---------Note-----------
+The interpretor will ignore everthing after $ in that line
+for example
+(a.b)$(a
+.c)$$
+will not work
+as "(a" is after $ that is ignored
+NOTHING SHOULD BE AFTER $ IN THE SAME LINE
