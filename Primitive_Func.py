@@ -29,7 +29,6 @@ def retLisp(boolval):
 			else SExp(exp_type=2, sym_atm="NIL")
 
 # Currently just compares the atoms
-# TODO for trees
 def eq(SExp1, SExp2):	
 	if SExp1.type == 1:
 		if SExp2.type == 1:
@@ -42,8 +41,23 @@ def eq(SExp1, SExp2):
 		else:
 			return SExp(exp_type=2, sym_atm="NIL")
 	else:
-		# print ("TODO on trees")
 		return SExp(exp_type=2, sym_atm="NIL")
+
+
+def EQLISP(SExp1, SExp2):	
+	if SExp1.type == 1:
+		if SExp2.type == 1:
+			return retLisp(SExp1.int_val == SExp2.int_val)
+		else:
+			return SExp(exp_type=2, sym_atm="NIL")
+	elif SExp1.type == 2:
+		if SExp2.type == 2:
+			return retLisp(SExp1.sym_atm == SExp2.sym_atm)
+		else:
+			return SExp(exp_type=2, sym_atm="NIL")
+	else:
+		raise MyError("Arguments for equal should be atomic and same type")
+
 
 # This is for python T for True and NIL for False
 def iseqbool(SExp1, SExp2):
@@ -63,15 +77,21 @@ def get_valAlist(LSExp, alist):
 def evcon(be, alist, dlist):
 	if iseqbool(be, SExp(exp_type=2, sym_atm="NIL")):
 		raise MyError("No condition correct")
-	leval, _, _ = lispeval(car(car(be)), alist, dlist)
-	if iseqbool(leval, SExp(exp_type=2, sym_atm="T")):
-		leval, _, _ = lispeval(car(cdr(car(be))), alist, dlist)
-		return leval
+	car_ev_be = evlist(car(be), alist, dlist)
+	# leval, _, _ = lispeval(car(car(be)), alist, dlist)
+	if not chk_numarg(car_ev_be, 2): raise MyError("Number of arguments for COND is not 2")
+	if iseqbool(car(car_ev_be), SExp(exp_type=2, sym_atm="T")):
+		# leval, _, _ = lispeval(car(cdr(be)), alist, dlist)
+		# return leval
+		return car(cdr(car_ev_be))
 	else:
 		return evcon(cdr(be), alist, dlist)
 
 
 def addtodlist(dlist, functparbody):
+	if not chk_numarg(functparbody, 3): raise MyError("Number of arguments for DEFUN should be 3")
+	if iseqbool(atom(car(cdr(functparbody))), SExp(exp_type=2, sym_atm="T")): 
+		raise MyError("Parameters for functions should not be a atom")
 	dlist = cons(functparbody, dlist) 
 	return dlist
 
@@ -85,7 +105,7 @@ def addtoAlist(plist, x, alist, fn):
 		curr_ptr_x = cdr(curr_ptr_x)
 		curr_ptr_p = cdr(curr_ptr_p)
 	if not iseqbool(curr_ptr_x, SExp(exp_type=2, sym_atm="NIL")):
-		raise MyError("Number of argument does not match for %s", fn)
+		raise MyError("Number of argument does not match for function %s"% fn)
 	return new_alist
 
 
@@ -98,52 +118,93 @@ def get_val(fn_name, dlist):
 	return cdr(car(curr_ptr))
 
 
+def chk_numarg(x, expected):
+	curr_x = x
+	while (not iseqbool(curr_x, SExp(exp_type=2, sym_atm="NIL")) ):
+		curr_x = cdr(curr_x)
+		expected-=1;
+	return True if expected==0 else False
+
+
 def lispapply(fn_name, x, alist, dlist):
 	# fn_name should be an atom as its checked in lispeval
 	if iseqbool(fn_name, SExp(exp_type=2, sym_atm="CAR")):
+		if not chk_numarg(x, 1): 
+			raise MyError("Number of argument for CAR not correct") 
 		return car(car(x))
 	elif iseqbool(fn_name, SExp(exp_type=2, sym_atm="CDR")):
+		if not chk_numarg(x, 1): 
+			raise MyError("Number of argument for CDR not correct")
 		return cdr(car(x))
 	elif iseqbool(fn_name, SExp(exp_type=2, sym_atm="EQ")):
-		return eq(car(x), car(cdr(x)))
+		if not chk_numarg(x, 2): 
+			raise MyError("Number of argument for EQ not correct")
+		return EQLISP(car(x), car(cdr(x)))
 	elif iseqbool(fn_name, SExp(exp_type=2, sym_atm="ATOM")):
+		if not chk_numarg(x, 1): 
+			raise MyError("Number of argument for ATOM not correct")
 		return atom(car(x))
 	elif iseqbool(fn_name, SExp(exp_type=2, sym_atm="CONS")):
+		if not chk_numarg(x, 2): 
+			raise MyError("Number of argument for CONS not correct")
 		return cons(car(x), car(cdr(x)))
 	elif iseqbool(fn_name, SExp(exp_type=2, sym_atm="NULL")):
+		if not chk_numarg(x, 1): 
+			raise MyError("Number of argument for NULL not correct")
 		return eq(car(x), SExp(exp_type=2, sym_atm="NIL"))
 	elif iseqbool(fn_name, SExp(exp_type=2, sym_atm="INT")):
+		if not chk_numarg(x, 1): 
+			raise MyError("Number of argument for INT not correct")
 		return SExp(exp_type=2, sym_atm="T") if car(x).type == 1 \
 			else SExp(exp_type=2, sym_atm="NIL")
 	elif iseqbool(fn_name, SExp(exp_type=2, sym_atm="PLUS")):
+		if not chk_numarg(x, 2): 
+			raise MyError("Number of argument for PLUS not correct")
 		if car(x).type == 1 and car(cdr(x)).type == 1:
 			return SExp(exp_type=1, int_val=car(x).int_val+car(cdr(x)).int_val)
-		else: raise MyError("Not correct format")
+		else: raise MyError("Not correct format for PLUS")
 	elif iseqbool(fn_name, SExp(exp_type=2, sym_atm="MINUS")):
+		if not chk_numarg(x, 2): 
+			raise MyError("Number of argument for MINUS not correct")
 		if car(x).type == 1 and car(cdr(x)).type == 1:
 			return SExp(exp_type=1, int_val=car(x).int_val-car(cdr(x)).int_val)
-		else: raise MyError("Not correct format")
+		else: raise MyError("Not correct format for MINUS")
 	elif iseqbool(fn_name, SExp(exp_type=2, sym_atm="TIMES")):
+		if not chk_numarg(x, 2): 
+			raise MyError("Number of argument for TIMES not correct")
 		if car(x).type == 1 and car(cdr(x)).type == 1:
 			return SExp(exp_type=1, int_val=car(x).int_val*car(cdr(x)).int_val)
-		else: raise MyError("Not correct format")
+		else: raise MyError("Not correct format for TIMES")
 	elif iseqbool(fn_name, SExp(exp_type=2, sym_atm="QUOTIENT")):
+		if not chk_numarg(x, 2): 
+			raise MyError("Number of argument for QUOTIENT not correct")
 		if car(x).type == 1 and car(cdr(x)).type == 1:
-			return SExp(exp_type=1, int_val=car(x).int_val/car(cdr(x)).int_val)
-		else: raise MyError("Not correct format")
+			try:
+				return SExp(exp_type=1, int_val=car(x).int_val/car(cdr(x)).int_val)
+			except ZeroDivisionError:
+				raise MyError("Zero cannot be in denomintor for QUOTIENT")
+		else: raise MyError("Not correct format for QUOTIENT")
 	elif iseqbool(fn_name, SExp(exp_type=2, sym_atm="REMAINDER")):
+		if not chk_numarg(x, 2): 
+			raise MyError("Number of argument for REMAINDER not correct")
 		if car(x).type == 1 and car(cdr(x)).type == 1:
-			return SExp(exp_type=1, int_val=car(x).int_val%car(cdr(x)).int_val)
-		else: raise MyError("Not correct format")
+			try:
+				return SExp(exp_type=1, int_val=car(x).int_val%car(cdr(x)).int_val)
+			except ZeroDivisionError:
+				raise MyError("Zero cannot be in denomintor for REAMINDER")
+		else: raise MyError("Not correct format for REMAINDER")
 	elif iseqbool(fn_name, SExp(exp_type=2, sym_atm="LESS")):
+		if not chk_numarg(x, 2): 
+			raise MyError("Number of argument for LESS not correct")
 		if car(x).type == 1 and car(cdr(x)).type == 1:
 			return retLisp(car(x).int_val < car(cdr(x)).int_val)
-		else: raise MyError("Not correct format")
+		else: raise MyError("Not correct format for LESS")
 	elif iseqbool(fn_name, SExp(exp_type=2, sym_atm="GREATER")):
+		if not chk_numarg(x, 2): 
+			raise MyError("Number of argument for GREATER not correct")
 		if car(x).type == 1 and car(cdr(x)).type == 1:
 			return retLisp(car(x).int_val > car(cdr(x)).int_val)
-		else: raise MyError("Not correct format")
-	# TODO: ADD other primitive functions
+		else: raise MyError("Not correct format for GREATER")
 	else:
 		par_bdy = get_val(fn_name, dlist)
 		leval, _, _ = lispeval(car(cdr(par_bdy)), addtoAlist(car(par_bdy), x, alist, fn_name), dlist) 
@@ -171,6 +232,7 @@ def lispeval(LSExp, alist, dlist):
 			return evcon(cdr(LSExp), alist, dlist), 0, dlist
 		elif iseqbool(car(LSExp), SExp(exp_type=2, sym_atm="DEFUN")):
 			return None, 1, addtodlist(dlist, cdr(LSExp))
+		# TODO: Quote parameter checking
 		elif iseqbool(car(LSExp), SExp(exp_type=2, sym_atm="QUOTE")):
 			return car(cdr(LSExp)), 0, dlist
 		else:
